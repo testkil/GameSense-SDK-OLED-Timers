@@ -5,7 +5,7 @@ block_cipher = None
 a = Analysis(['main.py'],
              pathex=['.'],
              binaries=[],
-             datas=[('stopwatch.ico', '.')],  # Ensure the icon is included
+             datas=[('stopwatch.ico', '.')],
              hiddenimports=['pystray._util.win32', 'pynput'],
              hookspath=[],
              runtime_hooks=[],
@@ -24,7 +24,7 @@ exe = EXE(pyz,
           bootloader_ignore_signals=False,
           strip=False,
           upx=True,
-          console=False,  # Set to True if you want a console window
+          console=False,
           icon='stopwatch.ico')
 coll = COLLECT(exe,
                a.binaries,

@@ -1,6 +1,7 @@
 import json
 import os
 import signal
+import sys
 import threading
 import time
 from datetime import datetime, timedelta
@@ -163,7 +164,7 @@ def timer_tick():
                 timers[index] = timer_text
             else:
                 trigger_end_notification(address)
-                time.sleep(3)  # Display "Time's up!" for 3 seconds
+                time.sleep(3)
                 timers[index] = ""
                 timer_end_times[index] = None
                 update_timers = False
