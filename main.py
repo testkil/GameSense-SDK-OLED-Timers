@@ -6,11 +6,12 @@ import time
 from datetime import datetime, timedelta
 
 import requests
+from PIL import Image
 from pynput import keyboard
-
+from pystray import Icon, MenuItem, Menu
 
 def get_core_props():
-    """ Fetch core properties from the SteelSeries Engine configuration. """
+    """Fetch core properties from the SteelSeries Engine configuration."""
     program_data = os.getenv('PROGRAMDATA')
     core_props_path = os.path.join(program_data, 'SteelSeries', 'SteelSeries Engine 3', 'coreProps.json')
     try:
@@ -19,22 +20,19 @@ def get_core_props():
     except FileNotFoundError:
         raise Exception('coreProps.json not found. Ensure SteelSeries Engine is running.')
 
-
 def register_app(address):
-    """ Register the application with SteelSeries Engine. """
+    """Register the application with SteelSeries Engine."""
     json_payload = {
-        "game": "HELLOAPP",
-        "game_display_name": "Testing App",
+        "game": "TIMERS",
+        "game_display_name": "Timer App",
         "developer": "Alex Camacho"
     }
-    response = requests.post(f'http://{address}/game_metadata', json=json_payload)
-    print("App registration response:", response.text)
-
+    requests.post(f'http://{address}/game_metadata', json=json_payload)
 
 def bind_event(address):
-    """ Register an event handler for displaying text. """
+    """Register an event handler for displaying text."""
     json_payload = {
-        "game": "HELLOAPP",
+        "game": "TIMERS",
         "event": "DISPLAY_TEXT",
         "handlers": [{
             "device-type": "screened",
@@ -62,14 +60,12 @@ def bind_event(address):
             ]
         }]
     }
-    response = requests.post(f'http://{address}/bind_game_event', json=json_payload)
-    print("Event binding response:", response.text)
-
+    requests.post(f'http://{address}/bind_game_event', json=json_payload)
 
 def bind_end_notification_event(address):
-    """ Register an event handler for full-screen timer end notification. """
+    """Register an event handler for full-screen timer end notification."""
     json_payload = {
-        "game": "HELLOAPP",
+        "game": "TIMERS",
         "event": "TIMER_END_NOTIFICATION",
         "handlers": [{
             "device-type": "screened",
@@ -84,17 +80,15 @@ def bind_end_notification_event(address):
             ]
         }]
     }
-    response = requests.post(f'http://{address}/bind_game_event', json=json_payload)
-    print("End notification event binding response:", response.text)
-
+    requests.post(f'http://{address}/bind_game_event', json=json_payload)
 
 def trigger_event(address, timers):
-    """ Trigger the event to display the specified message. """
+    """Trigger the event to display the specified message."""
     line1 = f"{timers[0]}" if len(timers) > 0 else " "
     line2 = f"{timers[1]}" if len(timers) > 1 else " "
     line3 = f"{timers[2]}" if len(timers) > 2 else " "
     json_payload = {
-        "game": "HELLOAPP",
+        "game": "TIMERS",
         "event": "DISPLAY_TEXT",
         "data": {
             "value": timers,
@@ -105,16 +99,13 @@ def trigger_event(address, timers):
             }
         }
     }
-    response = requests.post(f'http://{address}/game_event', json=json_payload)
-    #print("Event trigger response:", response.text)
-
+    requests.post(f'http://{address}/game_event', json=json_payload)
 
 def trigger_end_notification(address):
-    """ Trigger the event to display a full-screen timer end notification. """
+    """Trigger the event to display a full-screen timer end notification."""
     json_payload = {
-        "game": "HELLOAPP",
+        "game": "TIMERS",
         "event": "TIMER_END_NOTIFICATION",
-
         "data": {
             "value": datetime.now().strftime("%H:%M:%S"),
             "frame": {
@@ -122,28 +113,21 @@ def trigger_end_notification(address):
             }
         }
     }
-    response = requests.post(f'http://{address}/game_event', json=json_payload)
-    #print("End notification trigger response:", response.text)
-
+    requests.post(f'http://{address}/game_event', json=json_payload)
 
 def cleanup(address):
-    """ Cleanup by de-registering the application. """
-    json_payload = {"game": "HELLOAPP"}
-    response = requests.post(f'http://{address}/remove_game', json=json_payload)
-    print("Cleanup response:", response.text)
-
+    """Cleanup by de-registering the application."""
+    json_payload = {"game": "TIMERS"}
+    requests.post(f'http://{address}/remove_game', json=json_payload)
 
 def signal_handler(signum, frame):
-    """ Handle graceful shutdown. """
-    print("Shutting down gracefully...")
+    """Handle graceful shutdown."""
     try:
         core_props = get_core_props()
         address = core_props['address']
         cleanup(address)
     finally:
-        print("Cleanup complete. Exiting.")
-        exit(0)
-
+        os._exit(0)  # Ensure the program exits
 
 timers = []
 timer_end_times = []
@@ -152,24 +136,21 @@ core_props = get_core_props()
 address = core_props['address']
 timer_running = True
 
-
 def start_timer():
-    """ Start a new 7-minute timer. """
+    """Start a new 7-minute timer."""
     if len(timers) < max_timers:
         timers.append("")
         timer_end_times.append(datetime.now() + timedelta(minutes=7, seconds=10))
 
-
 def reset_timers():
-    """ Reset all timers. """
+    """Reset all timers."""
     global timer_running
     timers.clear()
     timer_end_times.clear()
     trigger_event(address, timers)
 
-
 def timer_tick():
-    """ Main timer loop to update all timers. """
+    """Main timer loop to update all timers."""
     global timer_running
     while timer_running:
         now = datetime.now()
@@ -180,7 +161,6 @@ def timer_tick():
                 minutes, seconds = divmod(int(remaining), 60)
                 timer_text = f"Timer {index + 1}: {minutes:02}:{seconds:02}"
                 timers[index] = timer_text
-
             else:
                 trigger_end_notification(address)
                 time.sleep(3)  # Display "Time's up!" for 3 seconds
@@ -198,9 +178,8 @@ def timer_tick():
 
         time.sleep(1)
 
-
 def on_press(key):
-    """ Handle key press events to start and stop timers. """
+    """Handle key press events to start and stop timers."""
     try:
         if key == keyboard.HotKey.parse('<ctrl>+<alt>+s'):
             start_timer()
@@ -209,18 +188,32 @@ def on_press(key):
     except AttributeError:
         pass
 
+def create_system_tray_icon():
+    """Creates and starts the system tray icon."""
+    icon_path = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
+    icon_image = Image.open(os.path.join(icon_path, "stopwatch.ico"))
+    menu = Menu(MenuItem("Exit", on_exit))
+    icon = Icon("TimerApp", icon_image, "Timer Application", menu)
+    icon.run()
+
+def on_exit(icon, item):
+    """Handles the exit action from the system tray."""
+    icon.stop()
+    global timer_running
+    timer_running = False
+    signal_handler(None, None)  # Ensure cleanup and exit
 
 def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
+    system_tray_thread = threading.Thread(target=create_system_tray_icon)
+    system_tray_thread.start()
+
     try:
         register_app(address)
         bind_event(address)
         bind_end_notification_event(address)
-
-        print(
-            "Application running. Press Alt+S to start a 7-minute timer (up to 3 timers). Press Alt+R to reset all timers. Press Ctrl+C to stop.")
 
         hotkeys = {
             '<ctrl>+<alt>+s': start_timer,
@@ -240,8 +233,7 @@ def main():
             listener.join()
             timer_thread.join()
     except Exception as e:
-        print("An error occurred:", e)
-
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     main()
