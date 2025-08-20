@@ -26,7 +26,7 @@ def register_app(address):
     json_payload = {
         "game": "TIMERS",
         "game_display_name": "Timer App",
-        "developer": "Alex Camacho"
+        "developer": "Axelle Camacho"
     }
     requests.post(f'http://{address}/game_metadata', json=json_payload)
 
